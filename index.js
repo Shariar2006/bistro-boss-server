@@ -25,11 +25,25 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
-    const menuCollection  = client.db('bistroDB').collection('foodMenu')
+    const menuCollection = client.db('bistroDB').collection('foodMenu')
+    const cartCollection = client.db('bistroDB').collection('cart')
 
-    app.get('/foodMenu', async(req, res)=>{
-        const result = await menuCollection.find().toArray()
-        res.send(result)
+    app.get('/foodMenu', async (req, res) => {
+      const result = await menuCollection.find().toArray()
+      res.send(result)
+    })
+
+    app.get('/carts', async (req, res) => {
+      const email = req.query.email;
+      const query = {email: email}
+      const result = await cartCollection.find(query).toArray()
+      res.send(result)
+    })
+
+    app.post('/carts', async (req, res) => {
+      const cartItem = req.body;
+      const result = await cartCollection.insertOne(cartItem)
+      res.send(result)
     })
 
 
@@ -44,10 +58,10 @@ async function run() {
 run().catch(console.dir);
 
 
-app.get('/', (req, res)=>{
-    res.send('bistro boss server is running')
+app.get('/', (req, res) => {
+  res.send('bistro boss server is running')
 })
 
-app.listen(port, ()=>{
-console.log(`bistro boss server is running ${port}`)
+app.listen(port, () => {
+  console.log(`bistro boss server is running ${port}`)
 })
