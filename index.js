@@ -75,6 +75,13 @@ async function run() {
       res.send(result)
     })
 
+    app.delete('/foodMenu/:id',verifyToken, verifyAdmin, async(req, res)=>{
+      const id = req.params.id;
+      const item = {_id: new ObjectId(id)};
+      const result =  await menuCollection.deleteOne(item);
+      res.send(result)
+    })
+
     app.get('/users', verifyToken, async (req, res) => {
       const result = await userCollection.find().toArray()
       res.send(result)
