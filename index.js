@@ -46,6 +46,17 @@ async function run() {
       })
     }
 
+    const verifyAdmin = async(req, res, next)=>{
+      const email = req.decode.email;
+      const query= {email: email};
+      const user = await userCollection.findOne(query);
+      const isAdmin = user?.role === 'admin';
+      if(!isAdmin){
+        return res.status(401).send({message: 'forbidden access'})
+      }
+      next()
+    }
+
     //jwt api
     app.post('/jwt', async(req,res)=>{
       const user = req.body;
@@ -57,6 +68,13 @@ async function run() {
       const result = await menuCollection.find().toArray()
       res.send(result)
     })
+
+    app.post('/foodMenu',verifyToken, verifyAdmin, async(req, res)=>{
+      const item = req.body;
+      const result =  await menuCollection.insertOne(item);
+      res.send(result)
+    })
+
     app.get('/users', verifyToken, async (req, res) => {
       const result = await userCollection.find().toArray()
       res.send(result)
