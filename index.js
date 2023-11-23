@@ -26,7 +26,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
     const userCollection = client.db('bistroDB').collection('user')
     const menuCollection = client.db('bistroDB').collection('foodMenu')
     const cartCollection = client.db('bistroDB').collection('cart')
@@ -211,11 +211,91 @@ async function run() {
     })
 
     //stats or analytics
-    
+    app.get('/admin-stats', verifyToken, verifyAdmin, async (req, res) => {
+      const user = await userCollection.estimatedDocumentCount();
+      const menuItem = await menuCollection.estimatedDocumentCount();
+      const order = await paymentCollection.estimatedDocumentCount();
+      const result = await paymentCollection.aggregate([
+        {
+          $group: {
+            _id: null,
+            totalRevenue: {
+              $sum: '$price'
+            }
+          }
+        }
+      ]).toArray()
+
+      const revenue = result.length > 0 ? result[0].totalRevenue : 0;
+
+
+
+      res.send({
+        user,
+        menuItem,
+        order,
+        revenue
+      })
+    })
+
+    // using aggregate pipeline
+    app.get('/order-stats', async (req, res) => {
+      const result = await paymentCollection.aggregate([
+        {
+          $unwind: '$menuItemIds'
+        },
+        // {
+        //   $lookup: {
+        //     from: 'foodMenu',
+        //     localField: 'menuItemIds',
+        //     foreignField: '_id',
+        //     as:'menuItems'
+        //   }
+        // }
+        {
+          $lookup: {
+            from: "foodMenu",
+            let: { objectId: { $toObjectId: "$menuItemIds" } },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $eq: [
+                      "$_id",
+                      "$$objectId"
+                    ]
+                  }
+                }
+              }
+            ],
+            as: "menuItems"
+          }
+        },
+        {
+          $unwind: '$menuItems'
+        },
+        {
+          $group: {
+            _id: '$menuItems.category',
+            quantity: { $sum: 1 },
+            revenue: { $sum: '$menuItems.price' }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            category: '$_id',
+            quantity: '$quantity',
+            revenue:  '$revenue' 
+          }
+        }
+      ]).toArray()
+      res.send(result)
+    })
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    // await client.db("admin").command({ ping: 1 });
+    // console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
